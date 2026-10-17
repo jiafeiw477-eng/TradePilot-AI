@@ -6,6 +6,7 @@ from streamlit.testing.v1 import AppTest
 
 import services.inquiry_history as inquiry_history
 import services.inquiry_ai as inquiry_ai
+import services.deepseek_client as deepseek_client
 from services.inquiry_ai import InquiryAIAnalysis
 
 
@@ -79,6 +80,32 @@ def test_inquiry_page_shows_real_ai_disclosure_and_example(
     assert len(app_without_api.text_area) == 1
     assert "Germany" in app_without_api.text_area[0].value
     assert app_without_api.button[0].label == "AI 分析"
+
+
+def test_inquiry_page_explains_missing_deepseek_configuration(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        deepseek_client,
+        "load_settings",
+        lambda: (_ for _ in ()).throw(
+            deepseek_client.DeepSeekConfigurationError(
+                "DeepSeek API 密钥未设置。"
+            )
+        ),
+    )
+    app = AppTest.from_file(str(APP_PATH)).run()
+    app.radio[0].set_value("询盘助手").run()
+
+    assert not app.exception
+    assert any(
+        "Streamlit Community Cloud" in item.value
+        for item in app.warning
+    )
+    assert any(
+        "应用仍可浏览" in item.value
+        for item in app.warning
+    )
 
 
 def test_empty_inquiry_is_rejected_without_api_call(app_without_api) -> None:

@@ -6,6 +6,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import APIError, OpenAI
+import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -36,11 +38,14 @@ class ConnectionTestResult:
 
 
 def load_settings() -> DeepSeekSettings:
-    """读取项目根目录的 .env 和系统环境变量，不输出密钥。"""
+    """读取环境变量、项目根目录 .env 或 Streamlit Secrets，不输出密钥。"""
     load_dotenv(dotenv_path=ENV_FILE)
 
     values = {
-        name: os.getenv(name, "").strip()
+        name: (
+            os.getenv(name, "").strip()
+            or _read_streamlit_secret(name).strip()
+        )
         for name in REQUIRED_SETTINGS
     }
     missing = [
@@ -56,6 +61,7 @@ def load_settings() -> DeepSeekSettings:
         raise DeepSeekConfigurationError(
             f"DeepSeek 配置不完整：{descriptions}未设置。"
             f"请在项目根目录的 .env 中配置：{missing_variables}。"
+            "部署到 Streamlit Community Cloud 时，请在应用的 Secrets 中配置同名字段。"
         )
 
     return DeepSeekSettings(
@@ -63,6 +69,14 @@ def load_settings() -> DeepSeekSettings:
         base_url=values["DEEPSEEK_BASE_URL"],
         model=values["DEEPSEEK_MODEL"],
     )
+
+
+def _read_streamlit_secret(name: str) -> str:
+    try:
+        value = st.secrets.get(name, "")
+    except StreamlitSecretNotFoundError:
+        return ""
+    return value if isinstance(value, str) else str(value)
 
 
 def create_client(

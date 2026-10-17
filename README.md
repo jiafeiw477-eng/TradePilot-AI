@@ -1,6 +1,6 @@
 # TradePilot AI｜外贸询盘助手
 
-**TradePilot AI 是一个面向外贸业务员的本地 Web 原型，可调用 DeepSeek 分析英文询盘、生成回复草稿，并在 SQLite 中保存分析与跟进信息。**
+**TradePilot AI 是一个面向外贸业务员的 Streamlit Web 原型，可调用 DeepSeek 分析英文询盘、生成回复草稿，并使用 SQLite 保存分析与跟进信息。**
 
 > English summary: TradePilot AI is a local Streamlit prototype for analyzing English export inquiries with DeepSeek, saving successful analyses to SQLite, and managing follow-up activity.
 
@@ -38,7 +38,7 @@
 - AI 真实 API 调用没有纳入自动化测试。本次文档阶段不发送真实请求，因此不能据此声称当前 API Key、账户余额、模型服务状态或真实响应可用。
 - Pandas 已列在依赖清单中，但当前应用源代码没有直接导入使用。
 - SQLite 数据存储在本机，未加密；当前不包含用户登录、角色权限、备份与恢复功能。
-- 项目目录已初始化本地 Git 仓库；当前尚无提交，项目文件仍未纳入 Git 跟踪。发布前应再次检查暂存区，确保 `.env`、`data/` 和其他敏感文件未被加入。
+- SQLite 数据库在本地或云端应用文件系统中；Streamlit Community Cloud 的本地文件系统不应视为持久化存储，重启或重新部署后记录可能丢失。
 
 ## 技术栈
 
@@ -76,16 +76,17 @@ trade_pilot_ai/
 │   └── inquiry_history.sqlite3    # 自动创建的本地数据库，已加入忽略规则
 ├── .env.example                   # 无密钥配置模板
 ├── .gitignore                     # 忽略密钥、数据库和 Python 缓存
+├── .streamlit/
+│   └── secrets.toml.example       # Streamlit Cloud Secrets 占位模板
 ├── requirements.txt               # Python 依赖
 └── README.md
 ```
 
 ## Windows 安装与启动
 
-在 PowerShell 中，从项目根目录运行以下命令。若已有 `.venv`，不必重复创建。
+在 VS Code 打开项目后，从项目根目录的 PowerShell 终端运行以下命令。若已有 `.venv`，不必重复创建。
 
 ```powershell
-Set-Location C:\Users\wvemi\Desktop\github\trade_pilot_ai
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
@@ -95,7 +96,6 @@ python -m streamlit run app.py
 如果使用 Python 3.11，将 `py -3.12` 改为 `py -3.11`。如果 PowerShell 不允许激活脚本，可直接调用虚拟环境中的解释器：
 
 ```powershell
-Set-Location C:\Users\wvemi\Desktop\github\trade_pilot_ai
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
@@ -107,12 +107,11 @@ Streamlit 启动后，根据终端提示打开本地网页。
 项目模板 [.env.example](./.env.example) 只包含空 API Key 和非秘密的配置示例。第一次配置时，仅在确认本地 `.env` 不存在后复制模板：
 
 ```powershell
-Set-Location C:\Users\wvemi\Desktop\github\trade_pilot_ai
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 ```
 
-只在本机 `.env` 中填写自己从 DeepSeek 官方渠道获得的密钥。不要把密钥粘贴到聊天、截图、代码、README 或作品集文档中。`.gitignore` 已忽略 `.env`、`.env.*`（保留 `.env.example`）及 `data/`。
+只在本机 `.env` 中填写自己从 DeepSeek 官方渠道获得的密钥。不要把密钥粘贴到聊天、截图、代码、README 或作品集文档中。`.gitignore` 已忽略 `.env`、`.env.*`（保留 `.env.example`）、`.streamlit/secrets.toml` 及 `data/`。
 
 可在不打印密钥的前提下检查是否读取到 API Key：
 
@@ -128,12 +127,28 @@ notepad .env
 
 该命令会发起真实 API 请求，可能产生费用。本项目自动化测试不应运行此脚本；本次测试没有发送 API 请求。
 
+## Streamlit Community Cloud 部署
+
+### 部署前的重要限制
+
+- 本项目使用本地 SQLite 文件保存询盘。Streamlit Community Cloud 的本地文件系统不是持久化数据库；应用重启、重新部署或迁移后，历史记录和跟进资料可能丢失。请勿将真实客户邮件用于此云端原型。生产使用前应改用有访问控制和备份的托管数据库。
+- 当前应用没有用户登录或访问权限控制。若将应用公开，任何能访问页面的人都可能提交询盘并触发 DeepSeek API 费用；也可能查看同一应用实例中的历史数据。不要在未限制访问时配置有费用的 API Key 或处理真实客户资料。
+
+### 发布步骤
+
+1. 将 GitHub 仓库推送到包含 `app.py` 和 `requirements.txt` 的分支。
+2. 登录 [Streamlit Community Cloud](https://share.streamlit.io/)，选择 **Create app**，指定仓库、分支（当前为 `master`）和主文件路径 `app.py`。
+3. 在应用的 **Settings → Secrets** 中按 [`.streamlit/secrets.toml.example`](./.streamlit/secrets.toml.example) 的格式配置。将占位符替换为自己的值；不要提交 `secrets.toml`。
+4. 保存配置并等待部署日志显示应用启动成功。未配置密钥时，应用仍可打开，但询盘助手会提示缺少配置。
+5. 首次部署建议先不配置真实 DeepSeek Key，验证页面能够启动后，再根据访问范围和费用风险决定是否启用 API。
+
+云端使用 Streamlit Secrets；本地开发仍可使用根目录 `.env`。环境变量优先于 Secrets。
+
 ## 测试与检查
 
 运行所有自动化测试：
 
 ```powershell
-Set-Location C:\Users\wvemi\Desktop\github\trade_pilot_ai
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
@@ -143,7 +158,7 @@ Set-Location C:\Users\wvemi\Desktop\github\trade_pilot_ai
 .\.venv\Scripts\python.exe -m compileall -q app.py inquiry_parser.py services tests scripts
 ```
 
-**本次实际测试结果（2026-10-16）：42 passed。** 编译检查也已执行并通过。测试覆盖解析器、模拟 API 响应处理、SQLite 操作和 Streamlit 页面流程；不覆盖真实 API 账户状态和浏览器剪贴板行为。
+最近一次项目测试结果（2026-10-17）：45 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理、SQLite 操作和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。
 
 ## 截图建议
 

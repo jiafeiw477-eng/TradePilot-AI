@@ -5,6 +5,7 @@ from datetime import date
 
 import streamlit as st
 
+import services.deepseek_client as deepseek_client
 import services.inquiry_history as inquiry_history
 from services.inquiry_ai import (
     InquiryAIAnalysis,
@@ -88,6 +89,13 @@ if selected_page == "询盘助手":
         "输入客户的英文询盘，使用 DeepSeek AI 获取翻译、需求分析、意向判断、"
         "风险提示和英文回复草稿。"
     )
+    try:
+        deepseek_client.load_settings()
+    except deepseek_client.DeepSeekConfigurationError as exc:
+        st.warning(
+            f"{exc} 应用仍可浏览；配置完成后才能使用 AI 分析。"
+            "Streamlit Community Cloud 用户请在应用设置的 Secrets 中配置。"
+        )
     st.warning(
         "真实 AI 模式：点击“AI 分析”会将输入邮件发送给 DeepSeek API，"
         "可能产生费用。未提供的信息应标记为“未提供”，请人工核实分析结果。"

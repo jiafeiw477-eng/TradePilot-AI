@@ -49,6 +49,7 @@
 | 保存成功分析 | SQLite 本地存储分析和询盘内容 | 允许刷新或重启后继续查看；保存失败会提示 |
 | 维护后续跟进 | 业务状态、业务优先级、备注和日期自动保存到 SQLite | 让分析结果与后续动作关联；业务优先级不由 AI 意向自动决定 |
 | 保护本地凭据 | 从 `.env` 读取；忽略 `.env` 和数据库目录 | 避免凭据写入代码和将本地数据库误提交 |
+| 云端配置凭据 | 支持从 Streamlit Secrets 读取 DeepSeek 配置 | 云端无需将密钥写入代码或仓库；未配置时仍可启动并显示提示 |
 | 提供可复制回复 | 使用 Streamlit 原生代码区复制控件 | 不增加前端脚本或依赖；剪贴板行为受浏览器权限影响 |
 | 支持可重复测试 | 数据库测试传入临时文件路径，API 分析使用模拟客户端 | 测试无需改动用户数据库，也不产生真实 API 费用 |
 
@@ -74,7 +75,8 @@
 - **DeepSeek 实际服务可用性**：代码路径存在，测试通过模拟客户端；本文编写期间没有真实 API 调用，因而不确认 API Key、账户额度和服务状态。
 - **复制功能**：已确认 Streamlit 代码区在页面中显示正确文本；没有真实浏览器剪贴板测试。
 - **规则解析器**：代码及单元测试存在，但当前询盘助手页面调用的是 DeepSeek 服务，不是规则解析器。
-- **数据安全**：`.env` 有忽略规则，数据库目录也有忽略规则；SQLite 数据文件本身未加密。
+- **数据安全**：`.env`、`.streamlit/secrets.toml` 和数据库目录都有忽略规则；SQLite 数据文件本身未加密。Streamlit Community Cloud 本地文件系统不保证持久化，应用重启或重新部署后数据可能丢失。
+- **云端访问控制**：当前没有用户登录或数据隔离。公开部署时，访问者可能触发消耗 DeepSeek 额度的请求，也可能访问同一应用共享的数据；不要把未受控的云端原型用于真实客户资料。
 - **Git 跟踪审计**：项目目录已初始化本地 Git 仓库，但尚无提交，当前项目文件未被 Git 跟踪。首次提交前仍需复核暂存区，确保不包含 `.env`、本地 SQLite 数据库或其他敏感内容。
 
 ### 占位页面
@@ -103,12 +105,12 @@ tests/
 主要文件：
 
 - `app.py`：入口、导航、表单、结果展示、历史记录和询盘管理界面。
-- `services/deepseek_client.py`：使用 `python-dotenv` 加载配置并创建 OpenAI 兼容客户端。
+- `services/deepseek_client.py`：从环境变量、`.env` 或 Streamlit Secrets 加载配置并创建 OpenAI 兼容客户端。
 - `services/inquiry_ai.py`：提示词、真实请求、超时与错误处理、JSON 结构验证。
 - `services/inquiry_history.py`：SQLite schema 初始化/迁移、记录增删查、跟进字段更新、筛选和统计。
 - `inquiry_parser.py`：本地规则式解析逻辑，独立于当前 AI 页面调用流程。
 
-依赖清单包含 Python、Streamlit、Pandas、python-dotenv、OpenAI SDK 和 pytest。当前应用源代码未直接导入 Pandas。
+依赖清单包含 Python、Streamlit、Pandas、python-dotenv、OpenAI SDK 和 pytest。当前应用源代码未直接导入 Pandas。部署入口为 `app.py`，云端依赖由 `requirements.txt` 安装。
 
 ## 7. 测试方案与本次实际结果
 
@@ -122,7 +124,7 @@ tests/
 
 ### 本次实际运行结果
 
-记录日期：2026-10-16。
+原记录日期：2026-10-16。
 
 ```text
 命令：.venv\Scripts\python.exe -m pytest -q
@@ -136,12 +138,15 @@ tests/
 
 本次没有运行真实 DeepSeek 请求，没有在浏览器中手工验证剪贴板，也没有进行正式的人工可用性测试或 AI 准确率评估。Git 仓库虽已初始化，但当时没有提交或已跟踪文件，因此无法据此审计任何已跟踪文件。以上未执行的项目不应被表述为已验证。
 
+部署适配补充验证（2026-10-17）：扩展 Streamlit Secrets 配置读取和缺失配置提示后，运行 `.venv\Scripts\python.exe -m pytest -q`，结果为 **45 passed**；运行 Python `compileall` 检查，退出码为 0。没有调用真实 DeepSeek API，也没有完成 Streamlit Community Cloud 部署。
+
 ## 8. 安全与数据注意事项
 
 - API Key 只应该保存在本地 `.env` 或安全的环境变量中；不要放在截图、作品集、代码或对话里。
 - `.env.example` 的 Key 字段为空，是占位模板，不包含真实密钥。
-- `.gitignore` 忽略 `.env`、`.env.*`（保留 `.env.example`）、`data/`、`.venv/` 和缓存文件。
+- `.gitignore` 忽略 `.env`、`.env.*`（保留 `.env.example`）、`.streamlit/secrets.toml`、`data/`、`.venv/` 和缓存文件。
 - 历史记录含客户邮件及 AI 输出，SQLite 当前为未加密本地文件。作品集截图请使用合成或脱敏内容。
+- Streamlit Community Cloud 上的 SQLite 文件仅适合临时原型验证，不能作为云端永久数据存储；需要持久化时应改用托管数据库并增加访问控制。
 - `scripts/test_deepseek_connection.py` 会真实调用 API，可能计费；自动化测试不应调用它。
 
 ## 9. 后续优化方向（规划，未实现）
