@@ -1,0 +1,16 @@
+# TradePilot AI 统一视觉主题：克制的浅色 B2B 工作台风格。
+# 白底主背景、浅灰分区、深海军蓝文字、蓝色交互强调色；不使用渐变或发光效果。
+[theme]
+base = "light"
+primaryColor = "#1F4E79"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F7FA"
+textColor = "#1B2A3D"
+font = "sans serif"
+
+# 演示时隐藏开发者工具栏，避免无关控件干扰截图。
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

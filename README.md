@@ -22,7 +22,7 @@
 
 ### 已实现
 
-- 中文 Streamlit 网页，提供“业务概览、询盘助手、产品目录、客户管理、设置、历史记录、询盘管理”导航。
+- 中文 Streamlit 工作台，统一提供“业务概览、询盘助手、AI 助手、产品目录、客户管理、历史记录、询盘管理、设置”导航。
 - 询盘助手通过 OpenAI Python SDK 兼容客户端调用 DeepSeek Chat Completions API，解析结构化 JSON，展示中文翻译、需求字段、辅助意向判断、风险、英文回复草稿和跟进建议。
 - 明确标注真实 API 调用；只有用户提交分析时才发送邮件内容。未配置、HTTP 错误、超时、连接错误、空响应及格式错误会显示错误提示，不用演示数据伪装成功。
 - 只有获取到有效分析后才尝试将询盘及分析结果保存到本地 SQLite。
@@ -30,15 +30,21 @@
 - 英文回复用 Streamlit `st.code` 代码区呈现，可使用组件提供的复制控件。自动化测试检查内容是否呈现，**没有在真实浏览器中验证剪贴板权限或实际粘贴结果**。
 - 询盘管理页提供总数、状态数和高优先级数统计，关键词搜索、状态/优先级筛选，以及状态、业务优先级、备注、下次跟进日期自动写入 SQLite。
 - 旧的 `inquiry_history` 表使用 `ALTER TABLE` 增量扩展；旧记录默认为“待跟进”、优先级“中”、空备注、未设置日期。
+- 业务概览从真实 SQLite 记录计算数量指标、按日/周趋势、状态/产品/国家分布、信息完整度及规则型洞察；日期和状态筛选同步作用于 CSV 导出。草稿生成数不会冒充实际邮件回复数。
+- 产品目录支持产品新增、编辑、搜索、分类/状态筛选、详情、分页和二次确认删除；价格、MOQ、唯一 SKU 校验与数据持久化由独立服务负责。
+- 客户管理支持客户新增、编辑、关键词/国家/等级/状态筛选、归档恢复、重复资料提醒、详情及询盘关联。有关联询盘的客户删除时归档，避免连带删除历史。
+- AI 助手支持多轮会话、快捷任务和显式选择客户/询盘；仅将有限的匹配产品、客户或询盘信息作为上下文，数据库读取失败时会取消 AI 请求。回复偏好从系统设置读取。
+- 系统设置将非敏感偏好保存到 SQLite；API Key 只读取 `.env` 或 Streamlit Secrets，不回显、不入库。
 - 独立的 `inquiry_parser.py` 规则解析模块可解析一部分常见英文表达，并有单元测试；**当前 Streamlit 询盘助手实际走 DeepSeek 分析流程，而非该规则解析器**。
 
-### 当前仍是占位或尚未验证的内容
+### 当前限制或尚未验证的内容
 
-- “业务概览、产品目录、客户管理、设置”仍为占位页面；尚未实现产品 CSV/Excel 导入、产品匹配或客户 CRM 工作流。
-- AI 真实 API 调用没有纳入自动化测试。本次文档阶段不发送真实请求，因此不能据此声称当前 API Key、账户余额、模型服务状态或真实响应可用。
-- Pandas 已列在依赖清单中，但当前应用源代码没有直接导入使用。
-- SQLite 数据存储在本机，未加密；当前不包含用户登录、角色权限、备份与恢复功能。
+- 产品 CSV/Excel 导入、客户资料导入、多用户登录和角色权限尚未实现。
+- 自动化测试使用模拟 DeepSeek 客户端，不会验证真实 API Key、账户额度、网络可用性或模型服务状态。
 - SQLite 数据库在本地或云端应用文件系统中；Streamlit Community Cloud 的本地文件系统不应视为持久化存储，重启或重新部署后记录可能丢失。
+- 当前没有用户认证或记录级数据隔离；不能把共享的单实例应用当作多用户安全 CRM。
+- 剪贴板控件、云端部署和真实 API 调用未做浏览器端到端验证。
+- SQLite 数据未加密，当前没有自动备份/恢复功能。
 
 ## 技术栈
 
@@ -50,7 +56,7 @@
 | OpenAI Python SDK | 使用兼容接口发送 DeepSeek Chat Completions 请求 |
 | `python-dotenv` | 从项目根目录 `.env` 读取 API 配置 |
 | pytest | 规则解析、API 响应处理、数据库及 Streamlit 页面测试 |
-| Pandas | 已声明依赖；目前核心页面尚未直接使用 |
+| Pandas | 业务趋势、统计与表格展示 |
 
 ## 项目结构
 
@@ -59,17 +65,26 @@ trade_pilot_ai/
 ├── app.py                         # Streamlit 入口、导航和页面呈现
 ├── inquiry_parser.py              # 独立的规则式英文询盘解析
 ├── services/
+│   ├── ai_assistant.py            # 多轮对话与按需注入业务数据
+│   ├── app_settings.py            # 非敏感偏好校验与 SQLite 持久化
+│   ├── customer_manager.py        # 客户管理和询盘关联/归档
+│   ├── database.py                # 共享 SQLite 连接和数据库工具
 │   ├── deepseek_client.py         # 环境变量配置与 API 客户端
 │   ├── inquiry_ai.py              # DeepSeek 请求、错误分类和响应校验
-│   └── inquiry_history.py         # SQLite 初始化、迁移、查询、更新、删除和统计
+│   ├── inquiry_history.py         # SQLite 初始化、迁移、查询、更新、删除和统计
+│   └── product_catalog.py         # 产品目录 CRUD、校验和 AI 检索
 ├── scripts/
 │   └── test_deepseek_connection.py # 手动真实 API 连通性测试（会发请求）
 ├── tests/
+│   ├── test_ai_assistant.py
 │   ├── test_app.py
+│   ├── test_app_settings.py
+│   ├── test_customer_manager.py
 │   ├── test_deepseek_client.py
 │   ├── test_inquiry_ai.py
 │   ├── test_inquiry_history.py
-│   └── test_inquiry_parser.py
+│   ├── test_inquiry_parser.py
+│   └── test_product_catalog.py
 ├── docs/
 │   └── portfolio.md               # 产品与项目作品集说明
 ├── data/
@@ -77,8 +92,10 @@ trade_pilot_ai/
 ├── .env.example                   # 无密钥配置模板
 ├── .gitignore                     # 忽略密钥、数据库和 Python 缓存
 ├── .streamlit/
+│   ├── config.toml                # 统一浅色主题与基础界面配置
 │   └── secrets.toml.example       # Streamlit Cloud Secrets 占位模板
-├── requirements.txt               # Python 依赖
+├── requirements.txt               # 应用运行依赖（供云端安装）
+├── requirements-dev.txt           # 本地测试依赖
 └── README.md
 ```
 
@@ -149,6 +166,7 @@ notepad .env
 运行所有自动化测试：
 
 ```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
@@ -158,7 +176,7 @@ notepad .env
 .\.venv\Scripts\python.exe -m compileall -q app.py inquiry_parser.py services tests scripts
 ```
 
-最近一次项目测试结果（2026-10-17）：45 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理、SQLite 操作和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。
+最近一次项目测试结果（2026-10-18）：119 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理、SQLite 操作、分析和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。另在本地启动 `app.py` 并确认首页 HTTP 200；此检查未调用 DeepSeek API。
 
 ## 截图建议
 
@@ -167,7 +185,7 @@ notepad .env
 1. `inquiry-assistant.png`：示例询盘、分析分区和英文草稿，确认截图中没有真实客户资料。
 2. `inquiry-history.png`：历史记录展开详情及复制控件。
 3. `inquiry-management.png`：统计卡片、搜索筛选和跟进表单。
-4. `placeholder-pages.png`：展示仍未实现的页面确为占位，避免让读者误以为功能已交付。
+4. `product-customer-workbench.png`：产品目录和客户资料管理页面，使用合成数据。
 
 截图前应检查浏览器、终端和页面中没有 API Key、真实客户邮箱或其他敏感信息。
 
@@ -178,8 +196,8 @@ notepad .env
 - AI 结果可能不准确，仍须人工核对；模型提示词不能替代业务审核。
 - 真实 AI 请求可能花费费用；超时或网络中断后的状态应由用户根据错误提示判断。
 - 数据库为未加密的本地文件，适合原型演示，不代表生产级客户数据管理方案。
-- 搜索为 SQLite 文本匹配，不是全文检索；没有联系人、公司名称等独立 CRM 字段。
-- 当前没有产品导入、目录匹配、CRM、账号权限、云同步、备份恢复或真实浏览器端到端剪贴板测试。
+- 搜索为 SQLite 文本匹配，不是全文检索；产品 CSV/Excel 导入尚未实现。
+- 当前没有账号权限、云同步、生产级备份恢复或真实浏览器端到端剪贴板测试。
 
 ### 未来规划（尚未实现）
 

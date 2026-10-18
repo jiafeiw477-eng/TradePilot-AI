@@ -124,6 +124,15 @@ def _find_country(text: str) -> str:
     return "未知"
 
 
+def detect_country(text: str) -> str:
+    """基于邮件正文的规则识别客户国家；未识别时返回“未知”。
+
+    仅在整个邮件中出现“based in / located in / headquartered in + 国家”这类
+    明确表述时才返回结果，不依赖客户姓名或邮箱后缀等不可靠线索。
+    """
+    return _find_country(text)
+
+
 def _find_product(text: str) -> tuple[str, re.Match[str] | None]:
     for pattern in PRODUCT_PATTERNS:
         match = re.search(pattern, text, flags=re.IGNORECASE)
