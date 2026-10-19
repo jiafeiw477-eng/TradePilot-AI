@@ -168,13 +168,20 @@ tests/
 结果：完成（项目应用及测试依赖均已安装）
 
 命令：python -m pytest -q
-结果：119 passed
+结果：119 passed（当时开发记录；2026-10-19 从当前仓库复测未能复现此计数）
 
 命令：python -m compileall -q app.py inquiry_parser.py services tests scripts
 结果：通过（退出码 0）
 ```
 
 另在隔离环境本地启动 `app.py`，首页返回 HTTP 200。没有调用真实 DeepSeek API、没有运行真实 API 连通性脚本、没有部署到 Streamlit Community Cloud，也没有进行真实浏览器剪贴板验证。上述能力仍未实测。
+
+### 当前仓库复测（2026-10-19）
+
+- 在 Python 3.12.10 隔离环境中，从项目根目录重新运行完整测试，初始结果为 **112 passed**；新增 429 限流错误自动化测试后结果为 **113 passed**。
+- `compileall` 与 `git diff --check` 均通过。
+- 没有调用真实 DeepSeek API、没有改动本地业务数据库，也没有部署到 Community Cloud。
+- 当前核对了仓库中的项目入口、运行依赖、Secrets 模板和 API 配置读取代码；已建立 [项目审计表](./project_audit.md)。
 
 ## 8. 安全与数据注意事项
 
@@ -184,6 +191,7 @@ tests/
 - 历史记录含客户邮件及 AI 输出，SQLite 当前为未加密本地文件。作品集截图请使用合成或脱敏内容。
 - Streamlit Community Cloud 上的 SQLite 文件仅适合临时原型验证，不能作为云端永久数据存储；需要持久化时应改用托管数据库并增加访问控制。
 - `scripts/test_deepseek_connection.py` 会真实调用 API，可能计费；自动化测试不应调用它。
+- DeepSeek 真实 API、在线部署、公开访问控制和云端 SQLite 持久化尚未完成实际验证。
 
 ## 9. 后续优化方向（规划，未实现）
 

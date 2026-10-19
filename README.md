@@ -86,7 +86,8 @@ trade_pilot_ai/
 │   ├── test_inquiry_parser.py
 │   └── test_product_catalog.py
 ├── docs/
-│   └── portfolio.md               # 产品与项目作品集说明
+│   ├── portfolio.md               # 产品与项目作品集说明
+│   └── project_audit.md            # 功能审计与验证边界
 ├── data/
 │   └── inquiry_history.sqlite3    # 自动创建的本地数据库，已加入忽略规则
 ├── .env.example                   # 无密钥配置模板
@@ -154,7 +155,7 @@ notepad .env
 ### 发布步骤
 
 1. 将 GitHub 仓库推送到包含 `app.py` 和 `requirements.txt` 的分支。
-2. 登录 [Streamlit Community Cloud](https://share.streamlit.io/)，选择 **Create app**，指定仓库、分支（当前为 `master`）和主文件路径 `app.py`。
+2. 登录 [Streamlit Community Cloud](https://share.streamlit.io/)，选择 **Create app**，指定仓库、分支（当前为 `master`）和主文件路径 `app.py`。如果部署设置中提供 Python 版本选项，选择 Python 3.12。
 3. 在应用的 **Settings → Secrets** 中按 [`.streamlit/secrets.toml.example`](./.streamlit/secrets.toml.example) 的格式配置。将占位符替换为自己的值；不要提交 `secrets.toml`。
 4. 保存配置并等待部署日志显示应用启动成功。未配置密钥时，应用仍可打开，但询盘助手会提示缺少配置。
 5. 首次部署建议先不配置真实 DeepSeek Key，验证页面能够启动后，再根据访问范围和费用风险决定是否启用 API。
@@ -176,7 +177,7 @@ notepad .env
 .\.venv\Scripts\python.exe -m compileall -q app.py inquiry_parser.py services tests scripts
 ```
 
-最近一次项目测试结果（2026-10-18）：119 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理、SQLite 操作、分析和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。另在本地启动 `app.py` 并确认首页 HTTP 200；此检查未调用 DeepSeek API。
+最近一次项目测试结果（2026-10-19）：113 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理（含限流错误）、SQLite 操作、分析和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。2026-10-18 曾本地启动 `app.py` 并确认首页 HTTP 200；此检查未调用 DeepSeek API。
 
 ## 截图建议
 

@@ -1,12 +1,12 @@
 # TradePilot AI 开发进度
 
-更新日期：2026-10-18
+更新日期：2026-10-19
 
 ## 阶段 0：项目检查与数据保护 — 已完成
 
 - 实际项目目录：`C:\Users\wvemi\Desktop\github\trade_pilot_ai`。本次用户消息中的 `C:\Users\wemi\...` 路径不存在。
 - 技术栈：Python 3.12、Streamlit、Pandas、OpenAI SDK（DeepSeek 兼容接口）、python-dotenv、SQLite、pytest。
-- 入口为 `app.py`；Git 分支为 `master`，远程为 `origin`，当前工作区有未提交修改。
+- 入口为 `app.py`；Git 分支为 `master`，远程为 `origin`。本次审计基线为 GitHub 与本地同步的 `a136672`；本轮生成审计文件并补充限流测试后，工作区会有待审核修改。
 - 检查过 `.gitignore`：忽略 `.env`、`.streamlit/secrets.toml`、`data/`、虚拟环境、缓存和日志。
 - 本地 SQLite 文件存在。只核对了表结构和记录数量，没有读取询盘正文；`inquiry_history` 保留 1 条记录，`app_settings` 表存在且当前 0 条设置。未发现 `products`、`customers` 表；页面访问时由模块按需创建。
 - 不重置数据库，不覆盖或删除工作区已有文件。进入本轮之前已存在大量未提交功能实现，本次在其上审查、补测和小范围修复；没有把所有既有代码都归因于本轮。
@@ -103,3 +103,13 @@ Streamlit 启动检查：app.py 成功启动；本地首页 HTTP 200，未调用
 3. 如要验证真实 DeepSeek，先确认 API 费用与数据授权，再手动进行一次请求。
 4. 如要云端部署，需配置 Streamlit Cloud Secrets；先解决无认证、SQLite 临时存储及共享数据的风险。当前没有可用的永久公网预览地址。
 5. 检查并确认本工作区现有改动后，再由项目所有者决定是否提交；本轮没有执行 `git add`、`git commit` 或 `git push`。
+
+## 2026-10-19 项目审计与交付复核
+
+- 按模块重新核对入口、服务层、SQLite 访问、依赖、配置、测试和 README；详细状态见 `docs/project_audit.md`。
+- 当前完整测试在相同隔离环境复跑为 112 项；新增 429 限流响应测试后，实测为 **113 passed**。此前开发记录中的 119 项未能在当前提交复现，README 与作品集已明确区分。
+- `python -m compileall -q app.py inquiry_parser.py services tests scripts` 通过；`git diff --check` 通过。
+- 自动化测试未调用真实 DeepSeek API。配置读取、429 错误说明、超时、空响应及模拟响应有测试；真实账号连通和模型质量仍需人工验证。
+- `app.py` 可从项目根目录导入；此前本地启动检查返回 HTTP 200。当前未重新启动受用户正在运行的应用，也未操作用户浏览器。
+- `.env`、`data/` 和 `.streamlit/secrets.toml` 均有忽略规则；无密钥被提交。当前仓库核心提交为 `a136672`。
+- Community Cloud 未部署。需要用户登录/授权后才能创建应用及配置 Secrets；公开访问风险、无登录和云端 SQLite 非持久性需先由项目所有者接受。

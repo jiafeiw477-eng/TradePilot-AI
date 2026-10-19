@@ -280,6 +280,25 @@ def test_http_error_diagnostics_redact_api_key(monkeypatch, caplog) -> None:
     assert "Rejected credential [已隐藏]" in caplog.text
 
 
+def test_rate_limit_error_explains_quota_or_throttling(monkeypatch) -> None:
+    response = Response(
+        429,
+        request=Request("POST", "https://example.invalid/chat/completions"),
+    )
+    error = APIStatusError(
+        "Rate limit reached",
+        response=response,
+        body={"error": {"code": "rate_limit_exceeded", "message": "Try later"}},
+    )
+    configure_fake_client(monkeypatch, None, exception=error)
+
+    with pytest.raises(inquiry_ai.InquiryAIError) as raised:
+        inquiry_ai.analyze_inquiry_with_ai("Please analyze this inquiry.")
+
+    assert "HTTP 429" in str(raised.value)
+    assert "限流或额度限制" in str(raised.value)
+
+
 def test_timeout_is_reported_separately_without_retry(monkeypatch, caplog) -> None:
     error = APITimeoutError(
         request=Request("POST", "https://example.invalid/chat/completions")
