@@ -110,6 +110,6 @@ Streamlit 启动检查：app.py 成功启动；本地首页 HTTP 200，未调用
 - 当前完整测试在相同隔离环境复跑为 112 项；新增 429 限流响应测试后，实测为 **113 passed**。此前开发记录中的 119 项未能在当前提交复现，README 与作品集已明确区分。
 - `python -m compileall -q app.py inquiry_parser.py services tests scripts` 通过；`git diff --check` 通过。
 - 自动化测试未调用真实 DeepSeek API。配置读取、429 错误说明、超时、空响应及模拟响应有测试；真实账号连通和模型质量仍需人工验证。
-- `app.py` 可从项目根目录导入；此前本地启动检查返回 HTTP 200。当前未重新启动受用户正在运行的应用，也未操作用户浏览器。
+- `app.py` 可从项目根目录导入；本轮在独立端口 `8504` 启动检查，首页返回 HTTP 200，完成后已停止该验证服务；没有重启用户原有的本地应用，也没有浏览器检查本地 UI。
 - `.env`、`data/` 和 `.streamlit/secrets.toml` 均有忽略规则；无密钥被提交。当前仓库核心提交为 `a136672`。
 - Community Cloud 未部署。需要用户登录/授权后才能创建应用及配置 Secrets；公开访问风险、无登录和云端 SQLite 非持久性需先由项目所有者接受。

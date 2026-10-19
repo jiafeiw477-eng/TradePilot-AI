@@ -177,7 +177,7 @@ notepad .env
 .\.venv\Scripts\python.exe -m compileall -q app.py inquiry_parser.py services tests scripts
 ```
 
-最近一次项目测试结果（2026-10-19）：113 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理（含限流错误）、SQLite 操作、分析和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。2026-10-18 曾本地启动 `app.py` 并确认首页 HTTP 200；此检查未调用 DeepSeek API。
+最近一次项目测试结果（2026-10-19）：113 passed。该结果不等同于云端部署验证。测试覆盖解析器、模拟 API 响应处理（含限流错误）、SQLite 操作、分析和 Streamlit 页面流程；不覆盖真实 API 账户状态、云端持久化和浏览器剪贴板行为。本次使用隔离端口启动 `app.py` 并确认首页 HTTP 200；此检查未调用 DeepSeek API。
 
 ## 截图建议
 
